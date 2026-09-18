@@ -1,0 +1,8 @@
+{
+  "name": "Gauchão - Controle de Pedidos de Kits de Café",
+  "description": "Sistema de controle e conferência manual de pedidos diários de café da manhã e refeições por empresa e colaboradores via WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
