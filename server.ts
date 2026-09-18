@@ -22,6 +22,23 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Security: Block direct HTTP access to server-side bundles, source maps, environment files, and backend artifacts
+app.use((req, res, next) => {
+  const lowerPath = req.path.toLowerCase();
+  // Protect backend files while allowing Vite dev server to serve client .ts/.tsx modules
+  if (
+    lowerPath === '/server.cjs' ||
+    lowerPath === '/server.cjs.map' ||
+    lowerPath === '/server.ts' ||
+    lowerPath.startsWith('/.env') ||
+    lowerPath.endsWith('.env') ||
+    lowerPath.endsWith('.env.example')
+  ) {
+    return res.status(404).json({ error: 'Endpoint não encontrado.' });
+  }
+  next();
+});
+
 // Security: Limit JSON body size to prevent memory exhaustion / DoS
 app.use(express.json({ limit: '500kb' }));
 
@@ -523,8 +540,14 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    // Support both root and /ControledePedidos/ subpath configured in vite.config.ts
+    app.use('/ControledePedidos', express.static(distPath));
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+
+    app.get(['/', '/ControledePedidos', '/ControledePedidos/*'], (_req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }

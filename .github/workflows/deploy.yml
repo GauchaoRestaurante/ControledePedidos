@@ -29,11 +29,27 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Instalar dependências
-        run: npm install
+      - name: Instalar dependências de forma reproduzível e segura
+        run: npm ci
 
-      - name: Criar versão de produção
+      - name: Executar testes de segurança e validação
+        run: npm test
+
+      - name: Criar versão de produção para GitHub Pages
+        env:
+          BUILD_FOR_PAGES: true
+          GITHUB_PAGES: true
         run: npm run build:pages
+
+      - name: Verificar segurança do artefato estático
+        run: |
+          # Garantir remoção de quaisquer resquícios de servidor ou mapas de código
+          rm -f ./dist/server.cjs ./dist/server.cjs.map ./dist/*.map ./dist/.env*
+          # Validar que nenhum arquivo restrito ou de backend foi incluído no pacote público
+          if [ -f ./dist/server.cjs ] || [ -f ./dist/server.cjs.map ] || [ -f ./dist/.env ]; then
+            echo "ERRO DE SEGURANÇA: Arquivo confidencial ou de backend detectado no artefato estático!"
+            exit 1
+          fi
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5

@@ -177,4 +177,61 @@ console.log('--- INICIANDO SUÍTE DE TESTES DE AUDITORIA PRÉ-PRODUÇÃO ---');
   console.log('  -> PASS: Sanitização de dados de IA validada.');
 }
 
+// Test 7: Post-Deploy Artifact Security & Absence of Secrets in Static Output
+{
+  console.log('7. Testando segurança do artefato estático gerado para GitHub Pages...');
+  import('node:fs').then((fs) => {
+    import('node:path').then((path) => {
+      const distDir = path.resolve(process.cwd(), 'dist');
+      if (fs.existsSync(distDir)) {
+        const forbiddenFiles = ['server.cjs', 'server.cjs.map', '.env', '.env.local', '.env.example'];
+        for (const file of forbiddenFiles) {
+          const filePath = path.join(distDir, file);
+          assert(!fs.existsSync(filePath), `Arquivo proibido '${file}' NÃO pode existir no diretório 'dist/' publicado!`);
+        }
+
+        const files = fs.readdirSync(distDir);
+        const hasMapFiles = files.some((f) => f.endsWith('.map'));
+        assert(!hasMapFiles, 'Nenhum arquivo de source map (*.map) deve existir no diretório raiz do dist');
+
+        // Check index.html for secrets and base URL
+        const indexHtmlPath = path.join(distDir, 'index.html');
+        if (fs.existsSync(indexHtmlPath)) {
+          const content = fs.readFileSync(indexHtmlPath, 'utf8');
+          assert(!content.includes('GEMINI_API_KEY'), 'index.html não pode conter referências a GEMINI_API_KEY');
+          assert(!content.includes('MY_GEMINI_API_KEY'), 'index.html não pode conter placeholders de chave de API');
+          assert(content.includes('/ControledePedidos/'), 'index.html deve conter o caminho base /ControledePedidos/');
+        }
+      }
+      console.log('  -> PASS: Verificação de ausência de segredos e artefatos de servidor no dist concluída.');
+    });
+  });
+}
+
+// Test 8: Sensitive Path Block Pattern
+{
+  console.log('8. Testando regra de bloqueio de caminhos de servidor sensíveis...');
+  const isSensitivePath = (reqPath: string) => {
+    const lower = reqPath.toLowerCase();
+    return (
+      lower.endsWith('.cjs') ||
+      lower.endsWith('.map') ||
+      lower.endsWith('.ts') ||
+      lower.includes('.env') ||
+      lower.includes('server')
+    );
+  };
+
+  assert(isSensitivePath('/server.cjs'), '/server.cjs deve ser bloqueado');
+  assert(isSensitivePath('/server.cjs.map'), '/server.cjs.map deve ser bloqueado');
+  assert(isSensitivePath('/dist/server.cjs'), '/dist/server.cjs deve ser bloqueado');
+  assert(isSensitivePath('/.env'), '/.env deve ser bloqueado');
+  assert(isSensitivePath('/.env.example'), '/.env.example deve ser bloqueado');
+  assert(isSensitivePath('/server.ts'), '/server.ts deve ser bloqueado');
+  assert(!isSensitivePath('/logo.png'), '/logo.png deve ser permitido');
+  assert(!isSensitivePath('/assets/index-DhLmGjoB.js'), 'bundle de JS cliente deve ser permitido');
+  assert(!isSensitivePath('/assets/index-T426TtBg.css'), 'bundle de CSS cliente deve ser permitido');
+  console.log('  -> PASS: Padrão de bloqueio de caminhos sensíveis validado.');
+}
+
 console.log('\n--- TODOS OS TESTES DE AUDITORIA FORAM APROVADOS COM SUCESSO! ---');
