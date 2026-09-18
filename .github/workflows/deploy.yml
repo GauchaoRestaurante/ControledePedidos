@@ -33,7 +33,7 @@ jobs:
         run: npm install
 
       - name: Criar versão de produção
-        run: npm run build
+        run: npm run build:pages
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
